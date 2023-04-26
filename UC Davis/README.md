@@ -1,6 +1,6 @@
 ## Course Names
 
-STA 206 - Statistical Methods for Research I 
+[STA 206 - Statistical Methods for Research I] (https://github.com/rly758/Coursework/tree/main/UC%20Davis/STA%20135)
 
 STA 207 - Statistical Methods for Research II
 
