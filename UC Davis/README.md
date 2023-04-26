@@ -1,6 +1,6 @@
 ## Course Names
 
-STA 206 - Statistical Methods for Research I
+STA 206 - Statistical Methods for Research I //
 STA 207 - Statistical Methods for Research II
 STA 208 - Statistical Methods in Machine Learning
 STA 220 - Statistical Data Technologies
