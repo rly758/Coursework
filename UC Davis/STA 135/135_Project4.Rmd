@@ -1,0 +1,188 @@
+---
+title: "135_Project4"
+author: "Richard Ly"
+date: "3/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(ggplot2)
+library(MASS)
+Project_4_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Projects/Project_4_Data.txt", sep="")
+Project_4_Data$X1 = as.factor(Project_4_Data$X1)
+
+summary(Project_4_Data)
+
+ggplot(data = Project_4_Data) + geom_point(aes(X2, X3, color = X1))
+
+model = lda(X1 ~ X2 + X3, data=Project_4_Data,prior=c(0.5,0.5))
+c = sum(model$scaling * colMeans(model$means))
+model$scaling
+c
+
+library(tidyverse)
+library(caret)
+pred = model %>% predict(Project_4_Data)
+confusion_matrix = confusionMatrix(pred$class,Project_4_Data$X1)
+confusion_matrix$table
+
+APER <- (confusion_matrix$table[1, 2] + confusion_matrix$table[2, 1])/nrow(Project_4_Data)
+APER
+
+cv.model = lda(X1 ~ X2 + X3, data=Project_4_Data,CV=T,prior=c(0.5,0.5))
+confusion_matrix_cv = confusionMatrix(cv.model$class,Project_4_Data$X1)
+confusion_matrix_cv$table
+
+APER_CV <- (confusion_matrix_cv$table[1, 2] + confusion_matrix_cv$table[2, 1])/nrow(Project_4_Data)
+APER_CV
+
+nbp <- 250
+X2 <- seq(min(Project_4_Data$X2), max(Project_4_Data$X2), length = nbp)
+X3 <- seq(min(Project_4_Data$X3), max(Project_4_Data$X3), length = nbp)
+Grid <- expand.grid(X2=X2, X3=X3)
+ggplot(data = Project_4_Data, aes(X2, X3, color = X1)) + geom_contour(data = cbind(Grid,
+X1 = predict(model,Grid)$class), aes(z = as.numeric(X1)), col = 'seagreen',
+breaks = c(1.5)) + geom_point()
+
+```
+
+# Introduction
+
+Given the `tail length` (mm) and `snout to vent length` (mm),  we would like to develop classification rules for the `gender` of Concho Water Snakes. In the Material and Methods section, we apply linear discriminant analysis on a data set of $n= 66$ observations to develop these classification rules. Here we assume the observations come from multivariate normal distributions with a common variance-covariance matrix, have equal prior probabilities, and have equal costs of misclassification. Additionally in this section, we state the Classification Rule. For this classification rule, we determine the confusion matrix and Apparent Error Rate (APER). Additionally for this classification rule, we determine the confusion matrix using the holdout procedure. Finally, in the Results section we state our conclusions.  
+
+# Material and Methods
+
+### Summary Statistics
+
+```{r}
+summary(Project_4_Data)
+```
+### Data Visualization
+
+```{r}
+ggplot(data = Project_4_Data) + geom_point(aes(X2, X3, color = X1)) + ggtitle("Tail Length vs Snout to Vent Length") + xlab("Tail Length (mm)") + ylab("Snout to Vent Length (mm)")
+
+```
+
+
+The observations in the dataset are plotted and color coded according to the gender. 
+
+### Classification Rule
+
+Assume multivariate normal distributions with common variance covariance matrix, equal prior probabilities,, and equal costs of misclassification. 
+
+$d(x) = (\overline{x}_1 -\overline{x}_2)^T S_{pooled}^{-1}\begin{bmatrix}x_1 \\ x_2\end{bmatrix}$
+
+$c = (\overline{x}_1 -\overline{x}_2)^T S_{pooled}^{-1}(\overline{x}_1 + \overline{x}_2)/2$
+
+```{r}
+model = lda(X1 ~ X2 + X3, data=Project_4_Data,prior=c(0.5,0.5))
+c = sum(model$scaling * colMeans(model$means))
+model$scaling
+c
+```
+
+$d(x) = -0.10211485x_2 + 0.03548129x_3$ 
+
+$c = 1.453125$
+
+An observation $x$ is classified to group 1 if $d(x) \geq c$, and classified to group 2 otherwise:
+
+$\text{Allocate } (X_2,X_3) \text{ to } \pi_1 \text{ if : } -0.10211485X_2 + 0.03548129X_3 \geq 1.453125$
+
+$\text{Allocate } (X_2,X_3) \text{ to } \pi_2 \text{ if : } -0.10211485X_2 + 0.03548129X_3 \lt 1.453125$
+
+### Classification Visualization
+
+```{r}
+ggplot(data = Project_4_Data, aes(X2, X3, color = X1)) + geom_contour(data = cbind(Grid,
+X1 = predict(model,Grid)$class), aes(z = as.numeric(X1)), col = 'seagreen',
+breaks = c(1.5)) + geom_point() + ggtitle("Tail Length vs Snout to Vent Length") + xlab("Tail Length (mm)") + ylab("Snout to Vent Length (mm)")
+```
+
+
+
+
+The above plot displays the determined classification rule. 
+
+
+### Confusion Matrix and Apparent Error Rate (APER)
+
+```{r}
+pred = model %>% predict(Project_4_Data)
+confusion_matrix = confusionMatrix(pred$class,Project_4_Data$X1)
+confusion_matrix$table
+
+APER
+```
+
+Here we display the number of correct classifications and misclassifications with a Confusion Matrix. The Apparent Error Rate (APER) is `r APER`
+
+### Holdout Procedure and Confusion Matrix
+
+```{r}
+cv.model = lda(X1 ~ X2 + X3, data=Project_4_Data,CV=T,prior=c(0.5,0.5))
+confusion_matrix_cv = confusionMatrix(cv.model$class,Project_4_Data$X1)
+confusion_matrix_cv$table
+
+APER_CV
+```
+
+We apply the Holdout Procedure and build a Confusion Matrix. The APER in this case is `r APER_CV``
+
+# Results
+
+Under the assumption that the observations in the dataset come from multivariate normal distributions with a common variance-covariance matrix, have equal prior probabilities, and have equal costs of misclassification, in the Material and Methods section, we have stated classification rules to classify the gender of Concho Water Snakes. This classification of gender is determined by the `tail length` (mm) and `snout to vent length` (mm). This determined classification rule yielded an APER of $0.076$. Additionally, using the holdout procedure yielded an APER of $0.076$. We note that both APER's are the same. The determined Classification Rule has a small APER and so we accept it as a valid rule to classify the gender of Concho Water Snakes using its `tail length` and `snout to vent length`.
+
+# References
+
+Various codes were referenced and used from Lab 9 for Stats 135, written by Ju-Sheng Hong and Yan-Yu Chen. 
+
+# Appendix
+
+```{r}
+library(ggplot2)
+library(MASS)
+Project_4_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Projects/Project_4_Data.txt", sep="")
+Project_4_Data$X1 = as.factor(Project_4_Data$X1)
+
+summary(Project_4_Data)
+
+ggplot(data = Project_4_Data) + geom_point(aes(X2, X3, color = X1)) + ggtitle("Tail Length vs Snout to Vent Length") + xlab("Tail Length (mm)") + ylab("Snout to Vent Length (mm)")
+
+model = lda(X1 ~ X2 + X3, data=Project_4_Data,prior=c(0.5,0.5))
+c = sum(model$scaling * colMeans(model$means))
+model$scaling
+c
+
+library(tidyverse)
+library(caret)
+pred = model %>% predict(Project_4_Data)
+confusion_matrix = confusionMatrix(pred$class,Project_4_Data$X1)
+confusion_matrix$table
+
+APER <- (confusion_matrix$table[1, 2] + confusion_matrix$table[2, 1])/nrow(Project_4_Data)
+APER
+
+cv.model = lda(X1 ~ X2 + X3, data=Project_4_Data,CV=T,prior=c(0.5,0.5))
+confusion_matrix_cv = confusionMatrix(cv.model$class,Project_4_Data$X1)
+confusion_matrix_cv$table
+
+APER_CV <- (confusion_matrix_cv$table[1, 2] + confusion_matrix_cv$table[2, 1])/nrow(Project_4_Data)
+APER_CV
+
+nbp <- 250
+X2 <- seq(min(Project_4_Data$X2), max(Project_4_Data$X2), length = nbp)
+X3 <- seq(min(Project_4_Data$X3), max(Project_4_Data$X3), length = nbp)
+Grid <- expand.grid(X2=X2, X3=X3)
+ggplot(data = Project_4_Data, aes(X2, X3, color = X1)) + geom_contour(data = cbind(Grid,
+X1 = predict(model,Grid)$class), aes(z = as.numeric(X1)), col = 'seagreen',
+breaks = c(1.5)) + geom_point() + ggtitle("Tail Length vs Snout to Vent Length") + xlab("Tail Length (mm)") + ylab("Snout to Vent Length (mm)")
+
+```
+
+

@@ -1,0 +1,351 @@
+---
+title: "135_Project2"
+author: "Richard Ly"
+date: "2/15/2022"
+output: 
+  html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=FALSE}
+Project_2_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Project_2_Data.txt", sep="")
+Project_2_Data$population = as.factor(Project_2_Data$sex)
+```
+
+
+```{r include=FALSE}
+male = Project_2_Data[Project_2_Data$sex=="0",1:2]
+female = Project_2_Data[Project_2_Data$sex=="1",1:2]
+```
+
+```{r include=FALSE}
+summary(male)
+summary(female)
+
+mean_male = c(mean(male$tail),mean(male$wing))
+mean_male
+
+mean_female = c(mean(female$tail),mean(female$wing))
+mean_female
+
+cor_male = cor(male)
+cor_male
+
+cor_female = cor(female)
+cor_female
+
+sigma_male = cov(male)
+sigma_male
+
+sigma_female = cov(female)
+sigma_female
+```
+
+
+```{r include=FALSE}
+par(mfrow=c(1,2))
+
+hist(male$tail)
+hist(female$tail)
+
+hist(male$wing)
+hist(female$wing)
+```
+
+```{r include=FALSE}
+n0 = nrow(male)
+n1 = nrow(female)
+p = ncol(male)
+
+diff = mean_male - mean_female
+S = sigma_male/n0 + sigma_female/n1
+
+alpha = 0.05
+T1 = t(diff) %*% solve(S,diff)
+
+critical_value1 = qchisq(alpha, p, lower.tail = FALSE)
+
+T1 > critical_value1
+```
+
+
+```{r include=FALSE}
+alpha = 0.05
+
+T2 =  abs(diff / sqrt(diag(S)))
+
+critical_value2 = sqrt(qchisq(alpha, p, lower.tail = FALSE))
+
+T2 > critical_value2
+```
+
+
+```{r include=FALSE}
+e.decom = eigen(S)
+a1 = sqrt(e.decom$values[1]) * sqrt(critical_value1)
+b1 = sqrt(e.decom$values[2]) * sqrt(critical_value1)
+theta = atan2(e.decom$vectors[, 1][2], e.decom$vectors[, 1][1])
+
+x_range = diff[1] + c(-1, 1) * critical_value2 * sqrt(diag(S))[1]
+y_range = diff[2] + c(-1, 1) * critical_value2 * sqrt(diag(S))[2]
+rect_range = data.frame(xmin = x_range[1], xmax = x_range[2], ymin = y_range[1], ymax = y_range[2])
+
+library(ggplot2)
+library(ggforce)
+ggplot() +
+geom_ellipse(aes(x0 = diff[1], y0 = diff[2], a = a1, b = b1, angle = theta)) +
+coord_fixed() +
+geom_rect(data = rect_range, mapping = aes(xmin = xmin, xmax = xmax,
+ymin = ymin, ymax = ymax), alpha = 0.5) +
+geom_point(aes(x = 0, y = 0), size = 2) +
+geom_text(aes(x = 0, y = 0), label = "(0, 0)", vjust = -1.5, show.legend = TRUE)
+```
+
+# Introduction
+
+The question of interest is whether or not hook-billed kites are equal in size. This is done using two measurements: `tail` length and `wing` length. We examine the mean vector, containing both measurements, for both male and female hook-billed kites to answer this question. 
+
+We begin with exploratory data analysis. We look at summary statistics and visualization of the data to compare both male and female populations. Next we conduct hypothesis testing to test for equality of male and female mean vectors. Then we construct a 95% confidence region and simultaneuos confidence intervals for the difference in the two mean vectors. Lastly, we state out conclusions.  
+
+
+# Material and Methods
+
+## Summary Statistics and Visualization
+
+```{r}
+summary(male)
+summary(female)
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(male, main = "Male")
+
+boxplot(female, main = "Female")
+```
+```{r}
+par(mfrow=c(1,2))
+
+hist(male$tail)
+hist(female$tail)
+
+hist(male$wing)
+hist(female$wing)
+```
+
+From the summary statistics, as well as the data visualizations, it appears that the `wing` length of male and female populations are equivalent. However, it appears that female hook-billed kites tend to have a larger `tail` length.  
+
+
+## Hypothesis Testing
+
+### Equivalent Means Testing
+
+Here we test whether the mean vectors containing `tail` and `wing` are equivalent for male and female hook-billed kites. We calculate a test statistic and compare this to the critical value found using a given significance level. 
+
+#### Formulas
+
+- Test Statistics
+
+$T = (\overline{X}_1-\overline{X}_2)^T[\frac{1}{n_1}S_1 + \frac{1}{n_2}S_2]^{-1}(\overline{X}_1-\overline{X}_2)$
+
+- Critical Value
+
+$c_\alpha = \chi_p^2(\alpha)$
+
+- Confidence Region
+
+$R(X) = \{\mu:(\overline{X}_1-\overline{X}_2)^T[\frac{1}{n_1}S_1 + \frac{1}{n_2}S_2]^{-1}(\overline{X}_1-\overline{X}_2) \leq c_\alpha\}$
+
+#### Hypotheses
+
+$H_0: \mu_1 = \mu_2$ vs $H_a: \mu_1 \neq \mu_2$
+
+```{r}
+T1
+critical_value1
+T1 > critical_value1
+```
+
+We see that the test statistic $T_1$ is greater than the critical value. We reject the null hypothesis $H_0$ and conclude the alternative hypothesis $H_a$. 
+
+### Simultaneous Component Means Tests
+
+Here we construct simultaneous confidence intervals for `tail` and `wing`. We calculate test statistics for both `tail` and `wing` and compare this to the critical value found using a given significance level. 
+
+#### Formulas
+
+- Test Statistics
+
+For $i = \{1, \ldots, p\}$,
+
+$T_{(i)}^{(S)} = \bigg \lvert \frac{ (\overline{X}_{1i} - \overline{X}_{2i})} { \sqrt{ \frac{1}{n_1}S_1 + \frac{1}{n_2}S_2 }} \bigg \rvert$
+
+- Critical Value
+
+$c_\alpha = \chi_p^2(\alpha)$
+
+- $(1 − \alpha)100\%$ Simultaneous Confidence Intervals
+
+For $i = \{1, \ldots, p\}$,
+
+$\overline{X}_{1i} - \overline{X}_{2i} \pm \sqrt{ \chi_p^2(\alpha)} \sqrt{ (\frac{1}{n_1}S_1 + \frac{1}{n_2}S_2)_{ii} }$
+
+#### Hypotheses
+
+$H_0: \mu_1 - \mu_2 = 0$ vs $H_a: \mu_1 - \mu_2 \neq 0$
+
+```{r}
+T2
+critical_value2
+T2 > critical_value2
+```
+
+We see that the test statistic for `tail`is greater than the critical value and less than the critical value for `wing`. Because not all test statistics are less than the critical value, we reject the null hypothesis $H_0$ and conclude the alternative hypothesis $H_a$. 
+
+
+# Results
+
+From the exploratory data analysis, it could be claimed that the male and female hook-billed kites are not the same size. While it appeared that the `wing` length was equivalent for both male and female, it seemed that `tail` length was larger for female hook-billed kites. To these claims, we used hypothesis testing of mean vectors containing the mean of `tail` and the mean of `wing`. 
+
+Under equivalent means testing, we found that the test statistic was greater than the critical value for the hypothesis test. We rejected the null hypothesis and concluded the alternative: The male and female mean vectors are not equivalent.
+
+Under simultaneous component means testing, we found that the test statistics were not all less than the critical value. Thus, we again rejected the null hypothesis and concluded the alternative: The male and female mean vectors are not equivalent. 
+
+To visualize this, we can graph the confidence region. 
+
+```{r echo=FALSE}
+e.decom = eigen(S)
+a1 = sqrt(e.decom$values[1]) * sqrt(critical_value1)
+b1 = sqrt(e.decom$values[2]) * sqrt(critical_value1)
+theta = atan2(e.decom$vectors[, 1][2], e.decom$vectors[, 1][1])
+
+x_range = diff[1] + c(-1, 1) * critical_value2 * sqrt(diag(S))[1]
+y_range = diff[2] + c(-1, 1) * critical_value2 * sqrt(diag(S))[2]
+rect_range = data.frame(xmin = x_range[1], xmax = x_range[2], ymin = y_range[1], ymax = y_range[2])
+
+library(ggplot2)
+library(ggforce)
+ggplot() +
+geom_ellipse(aes(x0 = diff[1], y0 = diff[2], a = a1, b = b1, angle = theta)) +
+coord_fixed() +
+geom_rect(data = rect_range, mapping = aes(xmin = xmin, xmax = xmax,
+ymin = ymin, ymax = ymax), alpha = 0.5) +
+geom_point(aes(x = 0, y = 0), size = 2) +
+geom_text(aes(x = 0, y = 0), label = "(0, 0)", vjust = -1.5, show.legend = TRUE)
+```
+
+We see that the point (0,0) does not lie within the region, supporting the conclusion that male and female hook-billed kites are not equivalently sized in terms of `tail` and `wing` length. Revisiting the summary statistics, we can conclude that female hook-billed kites are larger, in terms of `tail` length. 
+
+# References
+
+Parts of code were taken and modified from discussion lab pdf's for Stats 135, written by Yan-Yu Chen and Ju-Sheng Hong.
+
+# Appendix
+
+```{r}
+Project_2_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Project_2_Data.txt", sep="")
+Project_2_Data$sex = as.factor(Project_2_Data$sex)
+```
+
+
+```{r}
+male = Project_2_Data[Project_2_Data$sex=="0",1:2]
+female = Project_2_Data[Project_2_Data$sex=="1",1:2]
+```
+
+```{r}
+summary(male)
+summary(female)
+
+mean_male = c(mean(male$tail),mean(male$wing))
+mean_male
+
+mean_female = c(mean(female$tail),mean(female$wing))
+mean_female
+
+cor_male = cor(male)
+cor_male
+
+cor_female = cor(female)
+cor_female
+
+sigma_male = cov(male)
+sigma_male
+
+sigma_female = cov(female)
+sigma_female
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(male$tail)
+hist(female$tail)
+
+hist(male$wing)
+hist(female$wing)
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(male, main = "Male")
+
+boxplot(female, main = "Female")
+
+```
+
+
+```{r}
+n0 = nrow(male)
+n1 = nrow(female)
+p = ncol(male)
+
+diff = mean_male - mean_female
+S = sigma_male/n0 + sigma_female/n1
+
+alpha = 0.05
+T1 = t(diff) %*% solve(S) %*% diff
+
+critical_value1 = qchisq(alpha, p, lower.tail = FALSE)
+
+T1 > critical_value1
+```
+
+reject
+
+```{r}
+alpha = 0.05
+
+T2 =  abs(diff / sqrt(diag(S)))
+
+critical_value2 = sqrt(qchisq(alpha, p, lower.tail = FALSE))
+
+T2 > critical_value2
+```
+
+
+```{r}
+e.decom = eigen(S)
+a1 = sqrt(e.decom$values[1]) * sqrt(critical_value1)
+b1 = sqrt(e.decom$values[2]) * sqrt(critical_value1)
+theta = atan2(e.decom$vectors[, 1][2], e.decom$vectors[, 1][1])
+
+x_range = diff[1] + c(-1, 1) * critical_value2 * sqrt(diag(S))[1]
+y_range = diff[2] + c(-1, 1) * critical_value2 * sqrt(diag(S))[2]
+rect_range = data.frame(xmin = x_range[1], xmax = x_range[2], ymin = y_range[1], ymax = y_range[2])
+
+library(ggplot2)
+library(ggforce)
+ggplot() +
+geom_ellipse(aes(x0 = diff[1], y0 = diff[2], a = a1, b = b1, angle = theta)) +
+coord_fixed() +
+geom_rect(data = rect_range, mapping = aes(xmin = xmin, xmax = xmax,
+ymin = ymin, ymax = ymax), alpha = 0.5) +
+geom_point(aes(x = 0, y = 0), size = 2) +
+geom_text(aes(x = 0, y = 0), label = "(0, 0)", vjust = -1.5, show.legend = TRUE)
+```

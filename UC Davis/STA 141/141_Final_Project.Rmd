@@ -1,0 +1,226 @@
+---
+title: "Sta141A Final Project"
+author: "Chen Qian mrcqian@ucdavis.edu, Richard Ly rkly@ucdavis.edu, Yingzi Yang yziyang@ucdavis.edu"
+date: "6/5/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction and Research Question
+
+The standard of living and lifestyle choices varies across different geographical region. Various factors involved in standard of living and lifestyle choices may affect the life expectancy of a person. Our group conducted a study on what factors could affect the life expectancy of people living in different geographical regions. In particular, we examine Eastern Europe, Southern Asia, South-eastern Asia and Central America. Intuitively, regions with higher standards of living and healthier lifestyle choices would have higher life expectancy. If this is found to be true,  this suggests that reasonably allocating the resources of a region to improve certain factors involved with standard of living and lifestyle choices may increase life expectancy. This results in the following research questions:
+
+1. Which factors involved in standard of living and lifestyle choices have significant effects on life expectancy?
+
+2. How do these significant factors vary in effect on life expectancy between the 4 geographical regions of interest?
+
+3. Do the 4 geographical regions of interest share the same significant factors on life expectancy, and if so, to what extent? 
+
+
+# Data Description 
+
+Collected and processed by the Global Health Observatory data repository under World Health Organization (WHO), the Life Expectancy dataset contains data related to the life expectancy of various geographical regions in the world. The dataset consists of 22 columns of features and 2938 rows of observations. The complete dataset includes data between the years of 2000-2015 for 193 countries, but we focus on the year of 2014 and examine the life expectancy of this year. We do not look into the evolution of life expectancy over time in this report, so the predictor variable `Year` is omitted from the linear regression performed. The 2014 subset contains 183 rows of observations. Aside from the qualitative variables Country and Status, the remaining variables are quantitative variables. We list and define the features in question below.
+
+1. Country - country in which the data is obtained
+2. Year (omitted) - year in which the data is obtained. The year variable is not considered as we examine only 2014
+3. Status - Whether the country is `developing` or `developed`
+4. Life Expectancy - life expectancy, measured in years
+5. Adult Mortality - Adult Mortality Rates of both sexes (probability of dying between 15 and 60 years per 1000 population)
+6. Infant Deaths- Number of Infant Deaths per 1000 population
+7. Alcohol - Alcohol, recorded per capita (15+) consumption (in litres of pure alcohol)
+8. Percentage Expenditure - Expenditure on health as a percentage of Gross Domestic Product per capita(%)
+9. Hepatitis B - Hepatitis B (HepB) immunization coverage among 1-year-olds (%)
+10. Measles - number of reported cases per 1000 population
+11. BMI - Average Body Mass Index of entire population
+12. Under Five Deaths - Number of under-five deaths per 1000 population
+13. Polio - Polio (Pol3) immunization coverage among 1-year-olds (%)
+14. Total Expenditure - General government expenditure on health as a percentage of total government expenditure (%)
+15. Diptheria - Diphtheria tetanus toxoid and pertussis (DTP3) immunization coverage among 1-year-olds (%)
+16. HIV/AIDS - Deaths per 1 000 live births HIV/AIDS (0-4 years)
+17. GDP - Gross Domestic Product per capita (in USD)
+18. Population - Population of the country
+19. Thinness 1-19 years - Prevalence of thinness among children and adolescents for Age 10 to 19 (% )
+20. Thinness 5-9 years - Prevalence of thinness among children for Age 5 to 9(%)
+21. Income Composition of Resources - Human Development Index in terms of income composition of resources (index ranging from 0 to 1)
+22. Schooling - Number of years of Schooling (years)
+
+
+# Data Visualization
+
+Before we start fitting a linear regression model, we check the relationships between predictor variables. In our dataset, we have one categorical predictor variable (status), and 19 qualitative predictor variables. The plot of correlation matrix is below, and reveals the relationships between the different qualitative predictor variables. 
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+#correlation matrix
+library(corrplot)
+corrplot(cor(data[,2:20]), type = "lower", order = "hclust", tl.col = "black",,number.cex = 0.3, tl.cex = 0.8)
+```
+
+From the plot we can see that there are many variables that are highly correlated. Because of this, we should remove some of the highly correlated features later.
+
+
+
+
+
+
+# Data Analysis
+
+### Linear Regression
+
+Although our original data comes from the years 2000-2015 for 193 countries, we choose data from the year 2014 to avoid data auto correlation and overfitting. 
+
+We check for missing values in our 2014 dataset.
+
+```{r echo=FALSE, warning=FALSE}
+#load data and choose a fixed year
+data0<-read.csv("Life Expectancy Data.csv")
+data<-data0[which(data0$Year==2014),]
+data<-data[,-2]
+data<-data[,-1]
+head(sort(sapply(data, function(x) sum(is.na(x))),decreasing = TRUE))
+```
+
+
+After looking though the missing values of population and GDP, we found that most of these observations are missing values of population and GDP at the same time. So we choose to remove these observations. After that, we still have some observations which are missing population values. We decide to use the mean population to fill in these missing values. To increase the accuracy of substituting in theses values, we consider the observation's Status to obtain mean values. In other words, we use the mean of developing countries to fill in developing observation's missing population values, and use means of developed countries to fill in developed observation's missing population values.
+
+For the remaining missing values, since the count of missing values are not large, we use mean of the variable to fill in the value.
+
+After processing, the dataset contains 183 observations of 20 variables.
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+pop_mean_developing=mean(data[which(data$Status=='Developing'),]$Population,na.rm = T)
+pop_mean_developed=mean(data[which(data$Status=='Developed'),]$Population,na.rm = T)
+
+data[which(is.na(data$Population) & data$Status=='Developing'),'Population'] <- pop_mean_developing
+data[which(is.na(data$Population) & data$Status=='Developed'),'Population'] <- pop_mean_developed
+
+#fill the rest missing values with col mean
+fillin<-function(data){
+  for(i in 1:ncol(data)){
+    data[is.na(data[,i]), i] <- mean(data[,i], na.rm = TRUE)
+  }
+  return(data)
+}
+data<-fillin(data)
+```
+
+For modeling, we initially fit the full model, first-order multiple regression model with 20 predictors. It has 0.8255 adjusted R-squared and 7 significant X variables with 163 degrees of freedom. 
+
+```{r echo=TRUE, warning=FALSE}
+fit.e1<-lm(Life.expectancy~as.factor(Status)+Adult.Mortality+infant.deaths+Alcohol
+           +percentage.expenditure+Hepatitis.B+Measles+BMI+under.five.deaths+Polio
+           +Total.expenditure+Diphtheria+HIV.AIDS+thinness..1.19.years+thinness.5.9.years
+           + Income.composition.of.resources + Schooling + GDP + Population, data=data)
+length(fit.e1$coefficients)
+summary(fit.e1)
+```
+
+Next we check the plots of model diagnostics. The residuals vs fitted plot does not show a nonlinear pattern, and it appears to not violate assumption of homoescedasticity. Based on the normal Q-Q plot, it shows more probability mass on both tails, but does not severely deviate from the assumption of a normal distribution. Lastly, the leverage plot confirms the model is not significantly affected by influential outliers.
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))
+plot(fit.e1,which = 1:4)
+```
+
+Now we check the variance inflation factor for each predictor variable, and we find several groups of intercorrelated predictor variables, such as `infant.deaths` and `under.five.deaths`, `thinness..1.19.years` and `thinness.5.9.years`. To remedy this, we remove one or several of them to reduce multicollinearity. 
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+car::vif(fit.e1)
+```
+
+After removing highly correlated predictor variables, we fit the new model with the remaining variables. However, the summary of the new linear regression fit continues to show variables that are not significant. In order to achieve a good balance of bias and variance, we apply the forward stepwise selection with AIC and backward stepwise selection with BIC to our model. The forward AIC stepwise procedure yields a model with 9 features and backwards stepwise BIC procedure yields a models with 8 features. We note that the model chosen with respect to  AIC has a larger adjusted R^2 of 0.7968.
+
+```{r echo=TRUE, warning=FALSE}
+fit.e2 <-
+  lm(Life.expectancy~as.factor(Status)+Adult.Mortality+Alcohol
+     +Hepatitis.B+Measles+BMI+Polio
+     +Total.expenditure+HIV.AIDS+thinness.5.9.years
+     + Schooling + GDP + Population, data=data)
+length(fit.e2$coefficients)
+summary(fit.e2)
+```
+
+```{r echo=TRUE, warning=FALSE}
+library(MASS)
+none_mod <- lm(Life.expectancy ~ 1, data = data)
+fit.e2aic <-stepAIC(none_mod, scope = list(upper = fit.e2, lower = ~1), direction = "forward", k = 2, trace = FALSE)
+summary(fit.e2aic)
+
+n <- nrow(data)
+fit.e2bic <- stepAIC(fit.e2, scope = list(upper = fit.e2, lower =
+                                               ~1), direction = "backward", k = log(n), trace = FALSE)
+summary(fit.e2bic)
+```
+
+We again check for any violations of the assumptions on the selected model.
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+fit.e2best <- fit.e2bic
+car::vif(fit.e2best)
+par(mfrow = c(2, 2))
+plot(fit.e2best,which = 1:4)
+```
+
+The residuals vs fitted values plot does not show any obviously nonlinear pattern. In addition, it appears to not violate the assumption of homoescedasticity. Based on the normal Q-Q plot, it shows lightly heavy-tailed distribution, in comparison to the assumption of normally distributed errors. 
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+par(mfrow = c(2, 1))
+plot(fit.e2best,which = 5:6)
+```
+
+When we examine the outliers and influential cases in the BIC chosen model, we found there is one case 434 is outlying in Y in which it is larger than the Bonferroni’s procedure with significance level 0.1. And we don't find the points are outlying in X or leverage points. We exclude this case indicated in outlying in Y, and fit the final regression model.
+
+```{r echo=TRUE, warning=FALSE}
+fit.e2best <- lm(formula = Life.expectancy ~ as.factor(Status) + Adult.Mortality + 
+    Alcohol + Hepatitis.B + HIV.AIDS + thinness.5.9.years + Schooling + 
+    GDP, data = data,subset=setdiff(rownames(data),"434"))
+summary(fit.e2best)
+```
+
+The final model after exclusion of these influential outliers has 8 significant variables and the adjusted R^2 raised to 0.8175 with 173 degrees of freedom. At the same time, when we check the diagnostic plots of the final model, there is no obvious violation of assumptions as well.
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))
+plot(fit.e2best,which = 1:4)
+```
+
+The final model is: 
+
+$$Life\_expectancy=63.89-1.81\cdot1(Status='Developing')-.03Adult\_Mortality+.19Alcohol+.02Hepatitis-1.08HIV\_AIDS
+-.19Thinness+.94Schooling+.000039GDP$$
+
+### Hierarchical Clustering
+
+
+
+
+# Results 
+
+
+
+
+# Conclusion
+
+
+
+
+# Discussion
+
+Our goal is to find variables that significantly affect the life expectancy for 183 countries. The coefficients shows that life expectancy increases by 0.19 for every unit increase in pure alcohol consumption ; by 0.02 every percent increase in Hepatitis B immunization coverage among 1-year-olds; by 0.94 for every unit increase in number of years of schooling; and very lightly increase in GDP. Ans the coefficients shows that life expectancy decreases by 1.81 if the country is developing country; by 0.03 for every unit increase in adult mortality rates; by 1.08 for every unit increase in death per 1000 born with HIV; by 0.19 for every percent increase in prevalence of thinness of children of 5-9.
+
+
+# References
+
+[1] Source of data: https://www.kaggle.com/kumarajarshi/life-expectancy-who
+
+
+# Appendix 
+
+```{r}
+data2014 = data0[data0$Year==2014,]
+```

@@ -1,0 +1,433 @@
+---
+title: "135_Project1"
+author: "Richard Ly"
+date: "1/29/2022"
+output: 
+  html_document:
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+Project_1_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Project_1_Data.txt", sep="")
+Project_1_Data$population = as.factor(Project_1_Data$population)
+```
+
+```{r include=FALSE}
+bankrupt = Project_1_Data[Project_1_Data$population=="0",1:4]
+non_bankrupt = Project_1_Data[Project_1_Data$population=="1",1:4]
+```
+
+```{r include=FALSE}
+summary(bankrupt)
+summary(non_bankrupt)
+
+mean_bankrupt = c(mean(bankrupt$x1),mean(bankrupt$x2),mean(bankrupt$x3),mean(bankrupt$x4))
+mean_bankrupt
+
+mean_non_bankrupt = c(mean(non_bankrupt$x1),mean(non_bankrupt$x2),mean(non_bankrupt$x3),mean(non_bankrupt$x4))
+mean_non_bankrupt
+
+cor_bankrupt = cor(bankrupt)
+cor_bankrupt
+
+cor_non_bankrupt = cor(non_bankrupt)
+cor_non_bankrupt
+```
+
+```{r include=FALSE}
+library(ggplot2)
+ggplot(Project_1_Data, aes(x = x1, y = x2, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x3, y = x4, color = population)) + geom_point()
+
+
+```
+
+```{r include=FALSE}
+par(mfrow=c(1,2))
+
+hist(bankrupt$x1)
+hist(non_bankrupt$x1)
+
+hist(bankrupt$x2)
+hist(non_bankrupt$x2)
+
+hist(bankrupt$x3)
+hist(non_bankrupt$x3)
+
+hist(bankrupt$x4)
+hist(non_bankrupt$x4)
+```
+
+```{r include=FALSE}
+par(mfrow=c(1,2))
+boxplot(bankrupt, main = "Bankrupt")
+
+boxplot(non_bankrupt, main = "Non-Bankrupt")
+
+```
+
+```{r include=FALSE}
+par(mfrow=c(2,2))
+for(i in colnames(bankrupt[,1:4])){
+qqnorm(bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(bankrupt[,i]) 
+}
+
+for(i in colnames(non_bankrupt[,1:4])){
+qqnorm(non_bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(non_bankrupt[,i]) 
+}
+```
+
+
+```{r include=FALSE}
+SW_pvalue_bankrupt <- matrix(rep(NA, 4), nrow = 1, dimnames = list(c("p.value"), colnames(bankrupt)))
+for(i in 1:4){
+SW_pvalue_bankrupt[i] <- shapiro.test(bankrupt[,i])$p.value
+}
+SW_pvalue_bankrupt
+
+SW_pvalue_non_bankrupt <- matrix(rep(NA, 4), nrow = 1, dimnames = list(c("p.value"), colnames(non_bankrupt)))
+for(i in 1:4){
+SW_pvalue_non_bankrupt[i] <- shapiro.test(non_bankrupt[,i])$p.value
+}
+SW_pvalue_non_bankrupt
+```
+
+```{r include=FALSE}
+myOutliers = function(YourData){
+  b.plot = boxplot(YourData, plot = FALSE)
+  IndexOutliers = vector(mode = 'list', length = ncol(YourData))
+  for(i in 1:ncol(YourData)){
+    ColumnNow = YourData[, i]
+    IndexOutliers[[i]] = which(ColumnNow %in% b.plot$out[b.plot$group == i])
+  }
+
+  if(is.null(colnames(YourData))){
+    names(IndexOutliers) = paste("X", 1:ncol(YourData), sep = "")
+  }else{
+    names(IndexOutliers) = colnames(YourData)
+  }
+    
+  return(IndexOutliers)
+}
+
+bankrupt_IndexOutliers = myOutliers(bankrupt)
+bankrupt_IndexOutliers
+
+non_bankrupt_IndexOutliers = myOutliers(non_bankrupt)
+non_bankrupt_IndexOutliers
+```
+
+
+
+# Introduction
+
+In this report we proceed with exploratory data analysis on a provided dataset. The dataset contains 4 quantitative variables, and 1 categorical variable. The categorical variable separates the data between two populations: bankrupt firms and non-bankrupt firms. 
+
+In this report, we dedicate sections to Materials and Results, References, and an Appendix containing all code used. 
+
+In the Materials and Results section, we explore for each of the two populations' quantitative variables: summary statistics, highly correlated variables, pairwise scatter plots, side-by-side histograms, discriminating effects, normality, and outliers. 
+
+# Materials and Results
+
+- $X_1 = \frac{CF}{TD} = \frac{\mbox{cash flow}}{\mbox{total debt}}$
+- $X_2 = \frac{NI}{TA} = \frac{\mbox{net income}}{\mbox{total assets}}$
+- $X_3 = \frac{CA}{CL} = \frac{\mbox{current assets}}{\mbox{current liability}}$
+- $X_4 = \frac{CA}{NS} = \frac{\mbox{current assets}}{\mbox{net sales}}$
+
+
+## Summary Statistics
+
+Below are some summary statistics for bankrupt and non-bankrupt firms. 
+
+### Bankrupt Firms
+
+```{r}
+summary(bankrupt)
+mean_bankrupt
+```
+
+
+
+### Non-Bankrupt Firms
+
+```{r}
+summary(non_bankrupt)
+mean_non_bankrupt
+```
+
+
+## Highly Correlated Variables
+
+### Bankrupt Firms
+
+```{r}
+cor_bankrupt
+```
+
+For bankrupt firms, $X_1$ and $X_2$, $X_1$ and $X_4$ are highly positively correlated. 
+
+### Non-Bankrupt Firms
+
+```{r}
+cor_non_bankrupt
+```
+
+For non-bankrupt firms, $X_1$ and $X_2$ are highly positively correlated.
+
+## Pairwise Scatter Plots
+
+The pairwise scatter plots for the 4 quantitative variables are color coded by population, with `population = 0` corresponding to bankrupt firms, and `population = 1` corresponding to non-bankrupt firms.  
+
+```{r}
+ggplot(Project_1_Data, aes(x = x1, y = x2, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x3, y = x4, color = population)) + geom_point()
+```
+
+
+
+## Side-By-Side Histograms
+
+Histograms for bankrupt and non-bankrupt firms are put side-by-side for each quantitative variable.
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(bankrupt$x1)
+hist(non_bankrupt$x1)
+
+hist(bankrupt$x2)
+hist(non_bankrupt$x2)
+
+hist(bankrupt$x3)
+hist(non_bankrupt$x3)
+
+hist(bankrupt$x4)
+hist(non_bankrupt$x4)
+```
+
+## Discriminating Effects
+
+From examining the boxplots for both bankrupt and non-bankrupt firms, there are discriminating effects for all quantitative variables. Variables $X_1,X_2,X_3,X_4$ tend to be larger for bankrupt firms.
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(bankrupt, main = "Bankrupt")
+
+boxplot(non_bankrupt, main = "Non-Bankrupt")
+
+```
+
+## Normality
+
+We can examine Normal Q-Q plots to check for the assumption of normality. To verify normality for each of the variables, we can use the Shapiro-Wilks test to obtain p-values. At the $\alpha$ level of significance, we reject the hypothesis of normality if a variable's p-value is less than $\alpha$.
+
+### Bankrupt Firms
+
+```{r}
+par(mfrow=c(2,2))
+for(i in colnames(bankrupt[,1:4])){
+qqnorm(bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(bankrupt[,i]) 
+}
+```
+
+ Here, we choose $\alpha = 0.1$ for the Shapiro-Wilks test. 
+
+```{r}
+SW_pvalue_bankrupt
+```
+Variables $X_1,X_3,X_4$ have p-values greater than $\alpha = 0.1$ so the three variables satisfy the assumption of normality. $X_2$ has a p-value less than $\alpha = 0.1$ so it fails to satisfy the assumption of normality.
+
+
+### Non-Bankrupt Firms
+
+```{r}
+par(mfrow=c(2,2))
+for(i in colnames(non_bankrupt[,1:4])){
+qqnorm(non_bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(non_bankrupt[,i]) 
+}
+```
+
+ Here, we choose $\alpha = 0.1$ for the Shapiro-Wilks test. 
+
+```{r}
+SW_pvalue_non_bankrupt
+```
+
+Variables $X_1$ and $X_4$ have p-values greater than $\alpha = 0.1$ so the two variables satisfy the assumption of normality. $X_2$ and $X_3$ have p-values less than $\alpha = 0.1$ so they fail to satisfy the assumption of normality.
+
+## Outliers
+
+### Bankrupt Firms
+
+```{r}
+bankrupt_IndexOutliers
+```
+
+We find outliers for:
+
+- $X_1$ in rows 1,2, and 16
+- $X_2$ in row 1 
+- $X_3$ in rows 11 and 13
+
+There are no outliers for $X_4$.
+
+Note that these rows are the rows of `bankrupt`, not the original dataset. 
+
+### Non-Bankrupt Firms
+
+```{r}
+non_bankrupt_IndexOutliers
+```
+
+We find outliers for:
+
+- $X_1$ in row 19
+- $X_2$ in rows 13 and 19 
+- $X_3$ in rows 5, 6, 13, 21, and 25
+
+There are no outliers for $X_4$.
+
+Note that these rows are the rows of `non_bankrupt`, not the original dataset. 
+
+# References
+
+Small parts of code were taken and modified from discussion lab pdf's for Stats 135, written by Yan-Yu Chen and Ju-Sheng Hong.
+
+Function `myOutliers` was taken from Stats 135 Piazza, written by Ju-Sheng Hong. 
+
+# Appendix
+
+
+```{r}
+Project_1_Data <- read.csv("C:/Users/rly75/OneDrive/Desktop/135/Project_1_Data.txt", sep="")
+Project_1_Data$population = as.factor(Project_1_Data$population)
+```
+
+```{r}
+bankrupt = Project_1_Data[Project_1_Data$population=="0",1:4]
+non_bankrupt = Project_1_Data[Project_1_Data$population=="1",1:4]
+```
+
+```{r}
+summary(bankrupt)
+summary(non_bankrupt)
+
+mean_bankrupt = c(mean(bankrupt$x1),mean(bankrupt$x2),mean(bankrupt$x3),mean(bankrupt$x4))
+mean_bankrupt
+
+mean_non_bankrupt = c(mean(non_bankrupt$x1),mean(non_bankrupt$x2),mean(non_bankrupt$x3),mean(non_bankrupt$x4))
+mean_non_bankrupt
+
+cor_bankrupt = cor(bankrupt)
+cor_bankrupt
+
+cor_non_bankrupt = cor(non_bankrupt)
+cor_non_bankrupt
+```
+
+```{r}
+library(ggplot2)
+ggplot(Project_1_Data, aes(x = x1, y = x2, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x1, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x3, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x2, y = x4, color = population)) + geom_point()
+ggplot(Project_1_Data, aes(x = x3, y = x4, color = population)) + geom_point()
+
+
+```
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(bankrupt$x1)
+hist(non_bankrupt$x1)
+
+hist(bankrupt$x2)
+hist(non_bankrupt$x2)
+
+hist(bankrupt$x3)
+hist(non_bankrupt$x3)
+
+hist(bankrupt$x4)
+hist(non_bankrupt$x4)
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(bankrupt, main = "Bankrupt")
+
+boxplot(non_bankrupt, main = "Non-Bankrupt")
+
+```
+
+```{r}
+par(mfrow=c(2,2))
+for(i in colnames(bankrupt[,1:4])){
+qqnorm(bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(bankrupt[,i]) 
+}
+
+for(i in colnames(non_bankrupt[,1:4])){
+qqnorm(non_bankrupt[,i], frame = F, main = paste("Normal Q-Q Plot of ", i, sep = ""))
+qqline(non_bankrupt[,i]) 
+}
+```
+
+
+```{r}
+SW_pvalue_bankrupt <- matrix(rep(NA, 4), nrow = 1, dimnames = list(c("p.value"), colnames(bankrupt)))
+for(i in 1:4){
+SW_pvalue_bankrupt[i] <- shapiro.test(bankrupt[,i])$p.value
+}
+SW_pvalue_bankrupt
+
+SW_pvalue_non_bankrupt <- matrix(rep(NA, 4), nrow = 1, dimnames = list(c("p.value"), colnames(non_bankrupt)))
+for(i in 1:4){
+SW_pvalue_non_bankrupt[i] <- shapiro.test(non_bankrupt[,i])$p.value
+}
+SW_pvalue_non_bankrupt
+```
+
+```{r}
+myOutliers = function(YourData){
+  b.plot = boxplot(YourData, plot = FALSE)
+  IndexOutliers = vector(mode = 'list', length = ncol(YourData))
+  for(i in 1:ncol(YourData)){
+    ColumnNow = YourData[, i]
+    IndexOutliers[[i]] = which(ColumnNow %in% b.plot$out[b.plot$group == i])
+  }
+
+  if(is.null(colnames(YourData))){
+    names(IndexOutliers) = paste("X", 1:ncol(YourData), sep = "")
+  }else{
+    names(IndexOutliers) = colnames(YourData)
+  }
+    
+  return(IndexOutliers)
+}
+
+bankrupt_IndexOutliers = myOutliers(bankrupt)
+bankrupt_IndexOutliers
+
+non_bankrupt_IndexOutliers = myOutliers(non_bankrupt)
+non_bankrupt_IndexOutliers
+```
+
+
