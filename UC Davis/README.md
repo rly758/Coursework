@@ -1,7 +1,7 @@
 ## Course Names
 
-[STA 206 - Statistical Methods for Research I
-- Linear Regression on Abalone Age](https://github.com/rly758/Coursework/tree/main/UC%20Davis/STA%20206)
+STA 206 - Statistical Methods for Research I
+[- Linear Regression on Abalone Age](https://github.com/rly758/Coursework/tree/main/UC%20Davis/STA%20206)
 
 [STA 207 - Statistical Methods for Research II](https://github.com/rly758/Coursework/tree/main/UC%20Davis/STA%20207)
 
